@@ -311,6 +311,10 @@ export class ForestScene {
  }
  private createDistantLandscape(){
   const lake=mesh(new THREE.PlaneGeometry(95,240),new THREE.MeshStandardMaterial({color:0x477f85,metalness:.25,roughness:.26}),-117,-1,0);lake.rotation.x=-Math.PI/2;this.add(lake);
+  for(let i=0;i<9;i++){
+   const hill=mesh(new THREE.IcosahedronGeometry(1,3),new THREE.MeshBasicMaterial({color:i%2?0x55756a:0x668277,fog:false}),-177-i%2*9,0,-112+i*28);
+   hill.scale.set(24,13+Math.sin(i*2)*7,32);this.add(hill);
+  }
   for(let i=0;i<15;i++){const mountain=mesh(new THREE.IcosahedronGeometry(1,2),mat(i%2?0x597c6a:0x6f8d78),-90+i*16,8,-112-Math.sin(i)*18);mountain.scale.set(19,15+Math.sin(i*1.8)*9,30);this.add(mountain);}
   const stream=mesh(new THREE.PlaneGeometry(4,90),mat(0x607f72),0,-2.1,0);stream.rotation.x=-Math.PI/2;this.add(stream);
   this.woodPlank(30,1.3,27,5,.3,3);
