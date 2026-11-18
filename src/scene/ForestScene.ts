@@ -1,8 +1,10 @@
 import * as THREE from 'three';
+import {Chimpanzee} from '../scenes/forest/Chimpanzee';
 import type {ZoneInfo} from '../themes/types';
 
-export interface Hotspot { id:string; label:string; x:number; z:number; radius:number; position:THREE.Vector3; mark:THREE.Group; }
-interface Chimp {group:THREE.Group; arm:THREE.Group; phase:number; home:THREE.Vector3;}
+import type {Hotspot} from '../core/types';
+export type {Hotspot} from '../core/types';
+
 const C=(hex:number)=>new THREE.Color(hex);
 const mat=(color:number, roughness=0.94)=>new THREE.MeshStandardMaterial({color,roughness});
 const reusable={
@@ -22,12 +24,21 @@ export class ForestScene {
  scene=new THREE.Scene(); camera:THREE.PerspectiveCamera;
  renderer:THREE.WebGLRenderer;
  hotspots:Hotspot[]=[]; zones:ZoneInfo[];
+ private colliders:{x:number;z:number;r:number}[]=[];
  private rand=rand(30069);
  private animated: {obj:THREE.Object3D;phase:number;amplitude:number}[]=[];
- private chimps:Chimp[]=[];
+ private chimps:Chimpanzee[]=[];
+ private inspection:string|null=null;
+ private tool=new THREE.Group();
+ private toolLeaves=new THREE.Group();
+ private toolAnts=new THREE.Group();
+ private toolAnimation=-1;
+ private sun!:THREE.DirectionalLight;
+ private vegetation:THREE.InstancedMesh[]=[];
  private butterflies:THREE.Group[]=[];
  private particles:THREE.Points|null=null;
  private time=0;
+ private shaderTime={value:0};
  private planted:THREE.Group[]=[];
  private quality:'low'|'medium'|'high'='medium';
  private fog=new THREE.FogExp2(0x18392d,.013);
@@ -39,11 +50,19 @@ export class ForestScene {
   this.renderer.outputColorSpace=THREE.SRGBColorSpace;
   this.renderer.toneMapping=THREE.ACESFilmicToneMapping;
   this.renderer.toneMappingExposure=1.35;
-  const sun=new THREE.DirectionalLight(0xffe4ab,3.1); sun.position.set(-35,90,-55);
-  sun.castShadow=true; sun.shadow.mapSize.set(1024,1024); sun.shadow.camera.left=-85;sun.shadow.camera.right=85;sun.shadow.camera.top=85;sun.shadow.camera.bottom=-85;sun.shadow.bias=-.0001; this.scene.add(sun);
+  const sun=this.sun=new THREE.DirectionalLight(0xffe4ab,3.1); sun.position.set(-35,90,-55);
+  sun.castShadow=true; sun.shadow.mapSize.set(1024,1024); sun.shadow.camera.left=-85;sun.shadow.camera.right=85;sun.shadow.camera.top=85;sun.shadow.camera.bottom=-85;sun.shadow.camera.far=220;sun.shadow.camera.near=1;sun.shadow.bias=-.0001; this.scene.add(sun);
   this.scene.add(new THREE.HemisphereLight(0xc4e8cf,0x3a2e1e,2.25));
   this.scene.add(new THREE.AmbientLight(0x6b916d,.4));
-  const groundMaterial=mat(0x46512d);
+  const groundMaterial=mat(0x6f7043);
+  groundMaterial.onBeforeCompile=shader=>{
+   shader.uniforms.forestTime=this.shaderTime;
+   shader.vertexShader='varying vec3 groundPosition;\n'+shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\ngroundPosition=(modelMatrix*vec4(position,1.)).xyz;');
+   shader.fragmentShader='uniform float forestTime; varying vec3 groundPosition;\n'+shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
+    float grain=sin(groundPosition.x*31.)*sin(groundPosition.z*27.);
+    float shade=sin(groundPosition.x*.73+sin(groundPosition.z*.38+forestTime*.12))*sin(groundPosition.z*.82+cos(groundPosition.x*.41-forestTime*.1));
+    diffuseColor.rgb*=.55+smoothstep(.03,.65,shade)*.7+grain*.055;`);
+  };
   const g=new THREE.PlaneGeometry(240,240,80,80);
   const pos=g.getAttribute('position');
   for(let i=0;i<pos.count;i++){
@@ -51,10 +70,10 @@ export class ForestScene {
    const dist=Math.max(Math.abs(x),Math.abs(z));
    const roll=Math.sin(x*.056)*1.1+Math.cos(z*.061)*.92+Math.sin((x+z)*.095)*.38;
    const y=dist<58 ? .08*roll : roll*Math.min(1,(dist-55)/24);
-   pos.setZ(i,y);
+   void y;pos.setZ(i,this.groundHeight(x,-z));
   }
   g.computeVertexNormals();const ground=mesh(g,groundMaterial);ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;this.scene.add(ground);
-  this.createForest();this.createTrails();this.createSunRays();this.createDust();
+  this.createDistantLandscape();this.createForest();this.createTrails();this.createSunRays();this.createDust();
   this.createCamp();this.createObservation();this.createTermites();this.createProtection();this.createWildlife();
   this.setQuality('medium');
  }
@@ -70,30 +89,37 @@ export class ForestScene {
    const x=(this.rand()-.5)*218,z=(this.rand()-.5)*218;
    const nearAny=this.zones.some(q=>Math.hypot(q.x-x,q.z-z)<13);
    const onPath=(Math.abs(z+27)<7&&Math.abs(x)<40)||(Math.abs(z-27)<7&&Math.abs(x)<40)||(Math.abs(x+30)<7&&Math.abs(z)<40)||(Math.abs(x-30)<7&&Math.abs(z)<40);
-   if(nearAny||onPath||Math.abs(x)<5&&Math.abs(z)<5)continue;
+   if(x<-70||nearAny||onPath||Math.abs(x)<5&&Math.abs(z)<5)continue;
    const h=11+this.rand()*16;const w=3.8+this.rand()*3.3;
-   dummy.position.set(x,h*.49,z);dummy.rotation.set(0,this.rand()*Math.PI*2,0);dummy.scale.set(1,h,1);dummy.updateMatrix();trunk.setMatrixAt(count,dummy.matrix);
+   dummy.position.set(x,this.groundHeight(x,z)+h*.49,z);dummy.rotation.set(0,this.rand()*Math.PI*2,0);dummy.scale.set(1,h,1);dummy.updateMatrix();trunk.setMatrixAt(count,dummy.matrix);
    for(const [target,yy,scale] of [[foliage,h*.74,1],[foliage2,h*.89,.79],[foliage3,h*.59,.91]] as const){
-    dummy.position.set(x,yy+(this.rand()-.5)*1.3,z);dummy.scale.set(w*scale,w*.69*scale,w*scale);dummy.updateMatrix();target.setMatrixAt(count,dummy.matrix);
+    dummy.position.set(x,this.groundHeight(x,z)+yy+(this.rand()-.5)*1.3,z);dummy.scale.set(w*scale,w*.69*scale,w*scale);dummy.updateMatrix();target.setMatrixAt(count,dummy.matrix);
    }
-   count++;
+   this.colliders.push({x,z,r:.85});count++;
   }
-  for(const obj of [trunk,foliage,foliage2,foliage3]){obj.count=count;obj.instanceMatrix.needsUpdate=true;obj.castShadow=false;obj.receiveShadow=false;this.add(obj);}
+  for(const obj of [trunk,foliage,foliage2,foliage3]){obj.count=count;obj.instanceMatrix.needsUpdate=true;obj.castShadow=true;obj.receiveShadow=true;this.vegetation.push(obj);this.add(obj);}
   const bush=new THREE.InstancedMesh(reusable.crown,mat(0x63814b),780);const d=new THREE.Object3D();let n=0;
   for(let i=0;i<900 && n<780;i++){
    const x=(this.rand()-.5)*198,z=(this.rand()-.5)*198;
-   if(this.zones.some(q=>Math.hypot(q.x-x,q.z-z)<8))continue;
+   if(x<-70||this.zones.some(q=>Math.hypot(q.x-x,q.z-z)<8))continue;
    const s=.35+this.rand()*1.1;
-   d.position.set(x,s*.56,z);d.scale.set(s,s*.8,s);d.rotation.y=this.rand()*6;d.updateMatrix();bush.setMatrixAt(n++,d.matrix);
+   d.position.set(x,this.groundHeight(x,z)+s*.56,z);d.scale.set(s,s*.8,s);d.rotation.y=this.rand()*6;d.updateMatrix();bush.setMatrixAt(n++,d.matrix);
   }
-  bush.count=n;this.add(bush);
-  const fernGeo=new THREE.ConeGeometry(.55,1.8,4);const ferns=new THREE.InstancedMesh(fernGeo,mat(0x88a65f),360);n=0;
+  bush.count=n;this.vegetation.push(bush);this.add(bush);
+  const fernGeo=new THREE.BufferGeometry();const fernVertices:number[]=[];
+  for(let k=0;k<7;k++){const a=k*2.399;for(let j=0;j<6;j++){
+   const t=j/6,r=.12+t*.65,y=Math.sin(t*Math.PI)*.65;
+   const x=Math.cos(a)*r,z=Math.sin(a)*r;
+   fernVertices.push(x,y,z,x+Math.cos(a+.85)*.25*(1-t),y-.12,z+Math.sin(a+.85)*.25*(1-t),x+Math.cos(a)*.18,y+.08,z+Math.sin(a)*.18);
+   fernVertices.push(x,y,z,x+Math.cos(a-.85)*.25*(1-t),y-.12,z+Math.sin(a-.85)*.25*(1-t),x+Math.cos(a)*.18,y+.08,z+Math.sin(a)*.18);
+  }}
+  fernGeo.setAttribute('position',new THREE.Float32BufferAttribute(fernVertices,3));fernGeo.computeVertexNormals();const ferns=new THREE.InstancedMesh(fernGeo,new THREE.MeshStandardMaterial({color:0x88a65f,side:THREE.DoubleSide}),360);n=0;
   for(let i=0;i<520 && n<360;i++){
    const x=(this.rand()-.5)*180,z=(this.rand()-.5)*180;
-   if(this.zones.some(q=>Math.hypot(q.x-x,q.z-z)<8))continue;
-   const s=.45+this.rand()*.7;d.position.set(x,.8*s,z);d.scale.set(s,s,s);d.rotation.y=this.rand()*6;d.updateMatrix();ferns.setMatrixAt(n++,d.matrix);
+   if(x<-70||this.zones.some(q=>Math.hypot(q.x-x,q.z-z)<8))continue;
+   const s=.45+this.rand()*.7;d.position.set(x,this.groundHeight(x,z)+.8*s,z);d.scale.set(s,s,s);d.rotation.y=this.rand()*6;d.updateMatrix();ferns.setMatrixAt(n++,d.matrix);
   }
-  ferns.count=n;this.add(ferns);
+  ferns.count=n;this.vegetation.push(ferns);this.add(ferns);
   for(let i=0;i<35;i++){
    const x=(this.rand()-.5)*140,z=(this.rand()-.5)*140;
    if(this.zones.some(q=>Math.hypot(q.x-x,q.z-z)<11))continue;
@@ -154,8 +180,10 @@ export class ForestScene {
   p.castShadow=false;
   const board=this.woodPlank(x,3,z,3,.95,.18,0x54422a);
   board.rotation.y=Math.PI/7;
-  // HTML HUD carries localized names, so WebGL signs remain language-neutral.
-  void label;
+  const canvas=document.createElement('canvas');canvas.width=512;canvas.height=128;
+  const context=canvas.getContext('2d')!;context.fillStyle='#31442a';context.fillRect(0,0,512,128);context.font='bold 54px sans-serif';context.textAlign='center';context.fillStyle='#eff9d3';context.fillText(label,256,82);
+  const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;
+  const sign=mesh(new THREE.PlaneGeometry(3,.75),new THREE.MeshBasicMaterial({map:texture,side:THREE.DoubleSide}),x,3,z+.12);sign.rotation.y=board.rotation.y;this.add(sign);
  }
  private createObservation(){
   const x=25,z=-25;
@@ -187,10 +215,10 @@ export class ForestScene {
    const xx=-26+(i%2)*7,zz=22+Math.floor(i/2)*8;
    this.woodPlank(xx,.2,zz,1.4,.18,1.4,0x6d5534);
   }
-  this.makeSign(-38,20,'森林保育區');
-  this.addHotspot('plant1','復育原生樹苗 1',-27,22,0x9cd897);
-  this.addHotspot('plant2','復育原生樹苗 2',-20,22,0x9cd897);
-  this.addHotspot('plant3','復育原生樹苗 3',-27,30,0x9cd897);
+  this.makeSign(-38,20,'未來復育示意');
+  this.addHotspot('plant1','配置森林綠廊',-34,27,0x9cd897);
+  this.addHotspot('plant2','配置森林綠廊',-27,27,0x9cd897);
+  this.addHotspot('plant3','配置森林綠廊',-20,27,0x9cd897);
   this.addHotspot('forest-quiz','保育知識挑戰',-35,22,0xeac287);
   this.addHotspot('protect-facts','閱讀保育筆記',-16,35,0x9ccf90);
  }
@@ -202,33 +230,10 @@ export class ForestScene {
   const glow=mesh(new THREE.SphereGeometry(.63,10,8),new THREE.MeshBasicMaterial({color,transparent:true,opacity:.12}),0,2.1,0);g.add(glow);
   this.add(g);this.hotspots.push({id,label,x,z,radius:5.8,position:new THREE.Vector3(x,1.5,z),mark:g});
  }
- private createChimp(x:number,z:number,scale:number,phase:number):Chimp{
-  const g=new THREE.Group();g.position.set(x,0,z);g.scale.setScalar(scale);
-  const dark=mat(0x191c19),fur=mat(0x282a24),skin=mat(0x5a4439),face=mat(0x78594b),eye=mat(0x170e0c,.4);
-  ellipsoid(g,fur,0,1.65,0,.87,1.06,.61);
-  ellipsoid(g,fur,0,2.75,.16,.65,.72,.55);
-  ellipsoid(g,face,0,2.56,.65,.47,.36,.18);
-  ellipsoid(g,skin,0,2.85,.56,.43,.31,.14);
-  for(const s of [-1,1]){
-   ellipsoid(g,dark,s*.56,2.78,.13,.2,.28,.18);
-   ellipsoid(g,face,s*.56,2.78,.27,.115,.17,.1);
-   ellipsoid(g,eye,s*.22,2.87,.68,.09,.065,.045);
-   ellipsoid(g,skin,s*.25,.66,.38,.3,.22,.5);
-   beam(g,new THREE.Vector3(s*.55,1.45,-.17),new THREE.Vector3(s*.53,.5,.38),.27,.20,fur);
-  }
-  ellipsoid(g,face,0,2.52,.82,.24,.15,.1);
-  const arm=new THREE.Group();arm.position.set(-.7,2.2,0);g.add(arm);
-  beam(arm,new THREE.Vector3(0,0,0),new THREE.Vector3(-.38,-1.15,.35),.3,.19,fur);
-  ellipsoid(arm,skin,-.38,-1.17,.35,.22,.24,.20);
-  beam(g,new THREE.Vector3(.7,2.2,0),new THREE.Vector3(1,.9,.46),.28,.2,fur);
-  ellipsoid(g,skin,1,.85,.46,.22,.26,.23);
-  g.rotation.y=Math.PI*.92+this.rand()*.4;
-  this.add(g);const c={group:g,arm,phase,home:new THREE.Vector3(x,0,z)};this.chimps.push(c);return c;
- }
  private createWildlife(){
-  const a=this.createChimp(36,-26,.98,0),b=this.createChimp(41,-30,.78,2),c=this.createChimp(38,-33,.62,4);
-  a.group.rotation.y=-1;b.group.rotation.y=-.5;c.group.rotation.y=1;
-  const d=this.createChimp(39,29,.88,1);d.group.rotation.y=-Math.PI/2;
+  for(const [x,z,behavior] of [[37,-29,'groom'],[39,-29,'receive'],[43,-33,'walk'],[39,29,'food']] as const){
+   const chimp=new Chimpanzee(x,z,behavior);this.chimps.push(chimp);this.add(chimp.group);
+  }
   for(let i=0;i<24;i++){
    const g=new THREE.Group();const wingMat=new THREE.MeshBasicMaterial({color:i%2?0xf3d68c:0xa7d7af,side:THREE.DoubleSide});
    const w1=mesh(new THREE.PlaneGeometry(.34,.48),wingMat,.16,0,0);w1.rotation.y=.45;g.add(w1);
@@ -238,7 +243,10 @@ export class ForestScene {
   }
  }
  setQuality(q:'low'|'medium'|'high'){
-  this.quality=q;const max=Math.min(window.devicePixelRatio||1,q==='high'?2:q==='medium'?1.5:1);
+  this.quality=q;
+  this.vegetation.forEach((mesh,i)=>{mesh.count=Math.floor([360,360,360,360,780,360][i]*(q==='low'?.45:q==='medium'?.75:1));});
+  this.sun.shadow.mapSize.set(q==='high'?2048:1024,q==='high'?2048:1024);
+  this.sun.shadow.map?.dispose();this.sun.shadow.map=null;const max=Math.min(window.devicePixelRatio||1,q==='high'?2:q==='medium'?1.5:1);
   this.renderer.setPixelRatio(max);
   this.renderer.shadowMap.enabled=q!=='low';this.renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   this.renderer.toneMappingExposure=q==='high'?1.45:1.28;
@@ -247,9 +255,10 @@ export class ForestScene {
   this.resize();
  }
  resize(){const canvas=this.renderer.domElement;const w=canvas.clientWidth,h=canvas.clientHeight;if(w&&h){this.camera.aspect=w/h;this.camera.updateProjectionMatrix();this.renderer.setSize(w,h,false);}}
- update(dt:number){this.time+=Math.min(dt,.1);const t=this.time;
+ update(dt:number){this.time+=Math.min(dt,.1);const t=this.time;this.shaderTime.value=t;
   for(const v of this.animated)v.obj.rotation.z=Math.sin(t*.75+v.phase)*v.amplitude;
-  for(const c of this.chimps){c.arm.rotation.z=Math.sin(t*.78+c.phase)*.13;c.group.position.y=Math.sin(t*.95+c.phase)*.05;c.group.rotation.y+=Math.sin(t*.3+c.phase)*.00016;}
+  for(const c of this.chimps)c.update(t,(x,z)=>this.groundHeight(x,z));
+  if(this.toolAnimation>=0){const age=t-this.toolAnimation;this.tool.position.z=27-Math.sin(Math.min(age/2.4,1)*Math.PI)*1.2;this.toolAnts.visible=age>1.2;}
   for(let i=0;i<this.butterflies.length;i++){
    const g=this.butterflies[i];g.position.y+=Math.sin(t*2+i)*dt*.18;g.position.x+=Math.sin(t*.6+i)*dt*.2;
    g.children[0].rotation.y=Math.sin(t*13+i)*.85;g.children[1].rotation.y=-Math.sin(t*13+i)*.85;
@@ -270,6 +279,49 @@ export class ForestScene {
   g.scale.set(.32,.32,.32);this.add(g);this.planted.push(g);
   h.mark.visible=false;
  }
- activatePlanted(){for(const g of this.planted)g.scale.setScalar(.44);}
+ activatePlanted(){for(const g of this.planted)g.scale.setScalar(1.2);}
+ eyeHeight(x:number,z:number){return Math.abs(x-25)<5.4&&Math.abs(z+25)<4.2?4.13:this.groundHeight(x,z)+2.35;}
+ canWalk(x:number,z:number){return !this.colliders.some(c=>Math.hypot(x-c.x,z-c.z)<c.r)&&![[38,-29,7.2],[39,29,6.3]].some(([cx,cz,r])=>Math.hypot(x-cx,z-cz)<r);}
+ homeView(){this.camera.position.set(-13,7,-12);this.camera.lookAt(-33,3,-30);}
+ get qualityLevel(){return this.quality;}
+ groundHeight(x:number,z:number){
+  const valley=-2.4*Math.exp(-(x*x+z*z)/240);
+  const outside=Math.max(0,Math.max(Math.abs(x),Math.abs(z))-48);
+  return valley-Math.max(0,-x-60)*.35+outside*.10*(1+Math.sin(x*.055)*.3)+Math.sin(x*.07)*Math.cos(z*.07)*Math.min(outside*.04,1.4);
+ }
+ inspect(mode:string){this.inspection=mode;}
+ clearInspection(){this.inspection=null;this.camera.fov=72;this.camera.updateProjectionMatrix();}
+ applyInspection(){
+  if(!this.inspection)return;
+  if(this.inspection==='tools'){this.camera.position.set(24,5,32);this.camera.lookAt(30,2,27);this.camera.fov=42;}
+  else{const food=this.inspection==='food';this.camera.position.set(food?26:25,6.3,food?27:-23);this.camera.lookAt(food?39:38,1.3,food?29:-29);this.camera.fov=26;}
+  this.camera.updateProjectionMatrix();
+ }
+ toolStage(stage:number){
+  if(stage===0){this.toolLeaves.visible=true;this.toolAnts.visible=false;this.toolAnimation=-1;}
+  else{this.tool.visible=true;this.toolLeaves.visible=stage<2;if(stage===3)this.toolAnimation=this.time;}
+ }
+ showCorridor(){
+  for(const id of ['plant1','plant2','plant3'])if(this.hotspots.find(h=>h.id===id)?.mark.visible)this.plantTree(id);
+  this.activatePlanted();
+ }
+ reset(){
+  for(const object of this.planted){this.scene.remove(object);object.traverse(node=>{if(node instanceof THREE.Mesh&&node.geometry!==reusable.sphere){node.geometry.dispose();}});}
+  this.planted=[];this.hotspots.forEach(h=>h.mark.visible=true);this.toolStage(0);this.clearInspection();
+ }
+ private createDistantLandscape(){
+  const lake=mesh(new THREE.PlaneGeometry(95,240),new THREE.MeshStandardMaterial({color:0x477f85,metalness:.25,roughness:.26}),-117,-1,0);lake.rotation.x=-Math.PI/2;this.add(lake);
+  for(let i=0;i<15;i++){const mountain=mesh(new THREE.IcosahedronGeometry(1,2),mat(i%2?0x597c6a:0x6f8d78),-90+i*16,8,-112-Math.sin(i)*18);mountain.scale.set(19,15+Math.sin(i*1.8)*9,30);this.add(mountain);}
+  const stream=mesh(new THREE.PlaneGeometry(4,90),mat(0x607f72),0,-2.1,0);stream.rotation.x=-Math.PI/2;this.add(stream);
+  this.woodPlank(30,1.3,27,5,.3,3);
+  this.tool.position.set(30,2.0,27);
+  const branch=mesh(new THREE.CylinderGeometry(.055,.075,2,8),mat(0x8d6039));branch.rotation.x=Math.PI/2;this.tool.add(branch);
+  for(let i=0;i<6;i++){const leaf=mesh(reusable.sphere,mat(0x7cad56),(i-3)*.24,.1,0);leaf.scale.set(.19,.035,.12);this.toolLeaves.add(leaf);}
+  for(let i=0;i<8;i++){const ant=mesh(reusable.sphere,mat(0x372a19),(i-4)*.12,0,.05);ant.scale.set(.04,.03,.07);this.toolAnts.add(ant);}
+  this.tool.add(this.toolLeaves,this.toolAnts);this.toolAnts.visible=false;this.add(this.tool);
+  const hole=mesh(new THREE.TorusGeometry(.13,.05,8,16),mat(0x211c12),30,2,26.2);this.add(hole);
+  const demo=mesh(new THREE.ConeGeometry(.5,1.2,10),mat(0x9b6d48),30,2,25.7);this.add(demo);
+  for(const [x,z] of [[-39,27],[-17,27]]){for(let j=0;j<3;j++){const tree=mesh(reusable.crown,mat(0x3d7946),x+(j-1)*2,5,z+3);tree.scale.set(2.5,3,2.5);this.add(tree);}}
+ }
  dispose(){this.renderer.dispose();this.scene.traverse((o:THREE.Object3D)=>{if(o instanceof THREE.Mesh){o.geometry.dispose();const a=Array.isArray(o.material)?o.material:[o.material];for(const m of a)m.dispose();}});}
 }

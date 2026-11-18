@@ -11,3 +11,28 @@
 @media (max-width:900px){.zone-travel{top:auto;bottom:95px;right:16px;width:165px}.hud-left{top:86px;left:16px;width:260px;padding:15px 16px}.header{padding:15px 16px}.intro-screen{padding:10% 6%}.intro-panel h1{font-size:clamp(37px,7vw,63px)}.zone-travel{display:none}.zone-travel.expanded{display:flex}.only-desktop{display:inline-block}}
 @media (max-width:650px){.header{padding:12px}.brand-icon{width:36px;height:36px;font-size:14px}.brand b{font-size:10px;letter-spacing:1px}.brand small{font-size:9px}.header-actions{gap:5px}.icon-button{width:35px;height:35px;font-size:17px}.pill{padding:0 10px;height:35px;font-size:11px}.hud-left{top:66px;left:9px;width:min(225px,60vw);padding:11px 13px}.eyebrow{font-size:8px;letter-spacing:1px}.hud-left h2{font-size:13px;margin:9px 0}.mission-list{margin:6px 0}.mission-row{padding:6px 0;gap:6px}.mission-row b{font-size:10px}.mission-row small{font-size:9px}.mission-check{width:24px;height:24px;min-width:24px;font-size:9px}.hud-footer{font-size:8px}.zone-travel{bottom:145px;right:9px;width:154px}.travel-btn{height:43px}.travel-btn b{font-size:10px}.intro-screen{background:linear-gradient(90deg,#071b18ec,#102d23c0 80%),linear-gradient(to top,#061f17ae,transparent);padding:70px 8% 40px;align-items:center}.intro-kicker{font-size:9px;letter-spacing:1.3px}.intro-kicker span{width:15px}.intro-course{font-size:11px;margin:24px 0 12px}.intro-panel h1{font-size:clamp(35px,9vw,55px)}.english{font-size:10px;letter-spacing:1px;margin:18px 0}.intro-description{font-size:13px;margin:15px 0}.intro-meta{gap:8px;flex-wrap:wrap}.intro-meta span{font-size:9px}.intro-meta span:not(:last-child){padding-right:9px}.intro-tip{font-size:9px}.intro-index{left:15px;right:15px;font-size:8px}.intro-index span{display:none}.controls-help{display:none}.bottom-ui{bottom:110px;width:calc(100% - 20px)}.interaction{white-space:normal;gap:7px;padding:7px;font-size:11px;max-width:95%;width:100%;justify-content:center}.interaction button{font-size:11px;min-width:75px}.mobile-controller{display:flex;position:absolute;z-index:7;left:20px;right:20px;bottom:20px;align-items:flex-end;justify-content:space-between;pointer-events:none}.virtual-pad{touch-action:none;position:relative;pointer-events:auto;width:98px;height:98px;border-radius:50%;border:1px solid #b9d5a65e;background:radial-gradient(circle,#bddeb524 15%,#08292367 70%);display:grid;place-items:center}.joystick-knob{width:38px;height:38px;background:#c4e5b0a8;border:2px solid #e1f2ca;border-radius:50%;box-shadow:0 0 20px #b3dba548;pointer-events:none}.mobile-controller #mobile-interact{pointer-events:auto;background:#badb95e8;color:#183121;border:none;border-radius:50%;width:72px;height:72px;font-weight:900}.mini-stats{bottom:6px;right:11px;font-size:9px}.dialog-backdrop{padding:12px}.dialog{padding:19px;max-height:83dvh}.dialog h2{font-size:20px}.dialog-lead{font-size:13px}.book-grid{gap:6px}.entry{padding:9px}.entry b{font-size:11px}.entry small{font-size:9px}.dialog-actions .primary-button,.dialog-actions .outline-button{font-size:12px;padding:11px 13px}.toast{top:65px;width:max-content;max-width:80vw;text-align:center;font-size:11px}.crosshair{opacity:.32}}
 @media(max-height:650px){.hud-left{top:62px;padding:9px 12px}.mission-row{padding:5px 0}.intro-panel{transform:none}.intro-course{margin:12px 0}.intro-description{margin:8px 0}.intro-meta{margin-top:16px}.intro-tip{margin-top:9px}}
+
+input,select {font:inherit;color:#eaffdd;background:#213b2b;border:1px solid #87a86c;border-radius:8px;padding:10px;max-width:100%}
+.dialog label {display:block;line-height:1.6;margin:12px 0}
+.dialog input[type=radio]{margin-right:8px}
+.corridor-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.corridor-grid button{padding:14px 4px;background:#2b4430;border:1px solid #75905c;color:#fff;border-radius:9px;font:inherit}
+.corridor-grid button[aria-pressed=true]{background:#557639;border:2px solid #dbef9d}
+body.inspecting #dialog-backdrop{background:transparent;align-items:flex-end;justify-content:flex-end;padding:16px;pointer-events:none}
+body.inspecting #dialog{pointer-events:auto;width:min(440px,40vw);max-height:90dvh;background:#102c20ee}
+body.inspecting .hud-left{opacity:.25}
+.intro-panel h1{font-size:clamp(34px,5vw,76px)}
+@media(max-width:700px){
+ body.inspecting #dialog-backdrop{padding:8px}
+ body.inspecting #dialog{width:100%;max-height:44dvh}
+ body.inspecting #dialog h2{font-size:20px}
+ body.inspecting #dialog .dialog-body{font-size:14px}
+ body.inspecting #dialog p,body.inspecting #dialog label{margin:5px 0;font-size:14px}
+ .dialog{max-height:90dvh;overflow:auto}
+ .intro-panel h1{font-size:36px}
+ .zone-travel{z-index:12}
+}
+
+body.inspecting #dialog-backdrop{backdrop-filter:none;-webkit-backdrop-filter:none}
+body.inspecting .crosshair,body.inspecting .interaction,body.inspecting .controls-help{display:none}
+body.inspecting .zone-travel{visibility:hidden}

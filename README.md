@@ -1,66 +1,93 @@
-# 珍古德的黑猩猩研究站 · 3D Forest Expedition
+# 珍古德：非洲森林與黑猩猩研究站
 
-《麥塊 AI 科學實驗王 2》互動科學探索補充單元。適用對象為國小三年級至國中。
+《麥塊 AI 科學實驗王 2》補充單元。由提供的原型延伸開發，保留程序化森林、研究站、四區步道與原介面設計。原型 README 保存在 README.original.md，Git 第一筆提交保留原始版本。
 
-## 內容
+## 啟動
 
-在程序化生成的非洲森林中，完成四個研究任務：
-
-1. 森林研究站：閱讀珍古德在坦尚尼亞貢貝的觀察研究與筆記。
-2. 黑猩猩觀察區：在遠距離觀察平台觀察理毛等群體行為。
-3. 工具研究區：回答樹枝取白蟻的科學問題。
-4. 棲地保育區：種植三棵樹苗、回答保育問題。
-
-包含八張知識卡、兩道選擇題、任務進度與 Minecraft Education 延伸挑戰。**模擬場景不是貢貝的精確地圖**；黑猩猩動畫用於教學示意，不可作為動物行為研究資料。野外實際研究與參觀需要遵守保育機構的規範，切勿接近或餵食野生黑猩猩。
-
-## 技術
-
-- Three.js 0.180、TypeScript 5.8、Vite 7
-- 原生 WebGLRenderer、程序化樹木/地形/角色
-- 桌機 WASD、滑鼠拖曳視角、Shift 加速、F 互動；雙擊場景可鎖定滑鼠，Esc 解鎖
-- 手機虛擬搖桿 + 右側滑動視角 + 互動按鈕
-- Low/Medium/High 畫質、GitHub Pages 靜態部署
-
-## 安裝與執行
-
-需要 Node.js 22 或更新版本及網路安裝依賴：
+建議使用 Node.js 22.12+ 或 24。
 
 ```bash
 npm install
+npm run typecheck
 npm run dev
 ```
 
-依 Vite 顯示的本機網址開啟（通常是 `http://localhost:5173/`）。
+Windows 若限制 npm.ps1，請改用 npm.cmd。以瀏覽器開啟終端機的 Local 網址，手機可在同一網路開啟 Network 網址。正式建置與預覽如下。
 
 ```bash
-npm run typecheck
 npm run build
 npm run preview
 ```
 
-部署：將專案提交到你自己的 GitHub repository，在 **Settings → Pages → Build and deployment → GitHub Actions** 選擇 Actions；推送到 `main` 後由 `.github/workflows/deploy.yml` 建置發布。
+dist 已包含完整可部署成果，請透過 HTTP 伺服器執行。
 
-Vite 已設定相對 `base: './'`，可部署到 `username.github.io/repository-name/`。如果另行指定站點路徑，可用 `VITE_BASE_PATH` 覆寫。
+## 操作
 
-## 主題引擎與擴充
+- 桌機使用 WASD／方向鍵移動、滑鼠拖曳轉向、Shift 加速、F 互動。雙擊場景可鎖定滑鼠，Esc 開啟設定或關閉目前視窗。
+- 手機使用左搖桿、右側滑動與互動按鈕。也可用設定中的快速前往切換四區。
+- 互動需接近且看向標記。觀察台維持與動物的虛擬安全距離。
+- 右上圖鑑可重開八張知識卡。設定提供畫質、聲音與重新開始。
+- 背景聲為輕柔的合成和聲，須先點開始探索。沒有使用人物語音。
 
-目前已提供 `jane-goodall` 主題，資料位於 `src/themes/jane-goodall.ts`。
-後續新增主題：
+## 四種研究任務
 
-1. 建立 `src/themes/new-theme.ts`，填入相同 `ThemeConfig` 介面。
-2. 在 `src/themes/index.ts` 註冊主題。
-3. 針對新主題新增專用 3D 場景建構器（目前 `ForestScene` 專屬非洲森林），並由場景工廠選擇對應建構器。
-4. 共用 UI、進度、知識卡、問答與操作控制，為必要的新任務增加互動策略。
+1. 成為研究員。記錄時間及地點，區分可直接觀察的動作與推測，再寫入野外筆記。
+2. 遠距觀察。望遠鏡模式觀看理毛與覓食，每種至少四秒，選出實際動作並記錄兩種行為。
+3. 工具研究。模擬桌依序選細枝、去葉、插入孔洞，觀看取食示意，再回答工具問題。中途關閉可回到上個安全步驟。
+4. 森林連通。九格規劃桌選三點，連接中排兩側森林入口，顯示未來復育示意，再回答安全觀察問題。
 
-**現階段是可供擴充的單主題 MVP，不是只換主題資料就能自動生成不同 3D 科學世界的完整引擎。**
+所有錯答均可重試。重新開始會清除觀察、工具、配置、答案、樹苗與進度。觀察與動物動畫為教學示意，場景受貢貝啟發；實際野外活動應遵守保育機構規範。
+
+## 測試
+
+```bash
+npx playwright install chromium
+npm run build
+npm run preview -- --port 4191
+# 另開終端機
+npm run test:e2e
+```
+
+也可用 CHROME 指定現有瀏覽器執行檔。PowerShell 範例為
+`$env:CHROME='C:/Program Files/Google/Chrome/Application/chrome.exe'`。
+URL 可指定預覽來源，SCREENSHOTS_DIR 可指定截圖輸出。測試會寫入 screenshots/results.json。
+?debug=1 僅提供本機測試所需的 window.forest 存取介面。正式遊戲流程不依賴這個介面。
+
+## GitHub Pages
+
+將此專案目錄內的內容上傳到新儲存庫根目錄，包含 .github 隱藏目錄。
+在 Settings → Pages 選 GitHub Actions。推送到 main 後，既有 workflow 會 npm ci、建置並部署。
+workflow 自動依儲存庫名稱設定 VITE_BASE，無需猜測名稱。
+使用自訂網域時，可在 Actions Variables 設 VITE_BASE 為 /。
+本機建置預設 base 為 ./，亦可透過環境變數 VITE_BASE 指定其他前綴。
+本次交付未發佈至 GitHub，儲存庫名稱可由你決定。
+
+## 主題擴充與結構
+
+- src/core/App.ts 負責遊戲生命週期、導航、輸入事件與共用流程。
+- src/core/PlayerController.ts 負責行走、邊界與場景碰撞接口。
+- src/core/MissionManager.ts 負責防重複的完成紀錄。
+- src/core/InteractionRegistry.ts 將熱點 ID 對應至各主題的互動。
+- src/core/SceneFactory.ts 以 sceneType 選擇世界建構器。
+- src/core/types.ts 定義各世界需提供的共用生命週期與操作接口。
+- src/ui/GameUI.ts 保留原版介面，從 ThemeConfig 取得內容。
+- src/interactions/Research.ts 實作珍古德的四種研究操作。
+- src/scene/ForestScene.ts 沿用並升級原森林建構器。
+- src/scenes/forest/Chimpanzee.ts 定義無尾巴的多關節動物及行為動畫。
+- src/themes/jane-goodall.ts 定義課程、歷史介紹、區域、知識卡、問答與 Minecraft 延伸活動。
+- src/game/ForestGame.ts 保留原始匯入路徑，相容轉出新的 App。
+
+新增主題時，建立 ThemeConfig，在 themes/index.ts 使用 registerTheme(config, installExperience) 註冊。
+專屬操作以 app.register(actionId, callback) 加入；這個 installer 應回傳 reset 與 cancelView。
+若場景種類不同，以 registerScene(sceneType, builder) 註冊實作 SceneWorld 的世界，提供自己的熱點與安全操作範圍。
+共用 App 與玩家控制無需複製。現有主題參數為 ?theme=jane-goodall，無效參數會回到此主題。
+目前附上一個完成的森林主題；海洋與物理實驗室需另外實作各自的世界建構器及實驗操作。
+進度使用本次遊戲記憶體，不記錄兒童個資。
 
 ## 參考資料
 
-- [Jane Goodall Institute · Gombe Stream Research Center](https://janegoodall.org/programs/gombe-stream-research-center/)
-- [Jane Goodall Institute · Gombe at 65](https://janegoodall.org/news/gombe-stream-research-center-at-65-how-65-years-of-chimpanzee-research-changed-science-conservation-and-our-understanding-of-ourselves/)
-- [Jane Goodall Institute · Wildlife Tourism Policy](https://janegoodall.global/wp-content/uploads/2024/05/JGIG-Policy-on-Wildlife-Tourism-Final-18-March-2024.pdf)
-- [Abyssal Garden](https://noniv.github.io/abyssal-garden/) — 視覺品質與程式化生成思路參考，**未直接複製其程式碼或模型**。
+- [Jane Goodall Institute 貢貝研究](https://janegoodall.org/programs/gombe-stream-research-center/)
+- [Jane Goodall Institute 逝世公告](https://janegoodall.org/press-room-item/jane-goodall-renowned-ethologist-conservationist-and-animal-behavior-expert-passes-away-at-age-91/)
+- [Abyssal Garden 視覺方向參考](https://noniv.github.io/abyssal-garden/)
 
-## 實際測試限制
-
-此版完成原始碼，產出時的執行環境無法連線至 npm registry 下載 Three.js/Vite 套件，因此尚未能完成實機 `npm run build` 和瀏覽器 WebGL 畫面驗證。請於可連線的 Windows 環境執行安裝與測試，若有錯誤提供 console 訊息進一步修復。
+所有模型、地形、字牌及介面均由程式產生。未打包第三方人物照片、聲音或模型。

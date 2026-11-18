@@ -15,3 +15,12 @@
 
 請直接新增完整可執行的程式碼，保留既有作品。
 ```
+
+ 
+## 本次實作的擴充接口
+
+使用 themes/index.ts 的 registerTheme(config, installer) 註冊資料與任務互動。
+installer(app) 呼叫 app.register(actionId, callback)，回傳 reset 與 cancelView。
+異種場景用 core/SceneFactory.ts 的 registerScene 註冊建構器，
+依 core/types.ts 實作 SceneWorld。主程式從 sceneType 選擇世界，從主題 ID 選擇互動。
+畫質與碰撞由世界實作，輸入、任務計數、導航與介面繼續使用共用 App。

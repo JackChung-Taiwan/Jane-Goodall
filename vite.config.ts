@@ -1,2 +1,5 @@
-import { defineConfig } from 'vite';
-export default defineConfig({ base: process.env.VITE_BASE_PATH || './', build: { target: 'es2022' } });
+import {defineConfig} from 'vite';
+export default defineConfig({
+ base:(globalThis as unknown as {process:{env:Record<string,string>}}).process.env.VITE_BASE || './',
+ build:{rollupOptions:{output:{manualChunks:{three:['three']}}}}
+});

@@ -1,0 +1,56 @@
+{
+  "tests": [
+    {
+      "walk": "A→B→C→D→A",
+      "result": "passed"
+    },
+    {
+      "device": "desktop",
+      "tasks": "4/4",
+      "cards": 8,
+      "reset": true
+    },
+    {
+      "device": "mobile",
+      "tasks": "4/4",
+      "cards": 8,
+      "reset": true
+    }
+  ],
+  "errors": [],
+  "performance": [
+    {
+      "q": "low",
+      "fps": 60.17887422282435,
+      "p95": 16.799999999995634,
+      "p99": 16.80000000000291,
+      "calls": 46,
+      "triangles": 99474,
+      "width": 1920,
+      "height": 1080,
+      "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 4060 Ti (0x00002803) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+    },
+    {
+      "q": "medium",
+      "fps": 60.26703958978831,
+      "p95": 16.799999999995634,
+      "p99": 16.80000000000291,
+      "calls": 53,
+      "triangles": 156314,
+      "width": 1920,
+      "height": 1080,
+      "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 4060 Ti (0x00002803) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+    },
+    {
+      "q": "high",
+      "fps": 60.24898475467685,
+      "p95": 16.799999999995634,
+      "p99": 16.900000000001455,
+      "calls": 53,
+      "triangles": 203594,
+      "width": 1920,
+      "height": 1080,
+      "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 4060 Ti (0x00002803) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+    }
+  ]
+}

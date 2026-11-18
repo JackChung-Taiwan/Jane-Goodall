@@ -1,0 +1,13 @@
+{
+  "subpath": "/classroom/goodall/",
+  "errors": [],
+  "reset": true,
+  "performance": {
+    "device": "Chrome mobile emulation on RTX 4060 Ti",
+    "width": 390,
+    "height": 844,
+    "quality": "low",
+    "fps": 59.812587226686006,
+    "p95": 16.799999999999955
+  }
+}
